@@ -46,19 +46,29 @@ void avpriv_atomic_int_set(volatile int *ptr, int val)
     *ptr = val;
     pthread_mutex_unlock(&atomic_lock);
 }
-
-int avpriv_atomic_int_add_and_fetch(volatile int *ptr, int inc)
+int avpriv_atomic_int_fetch_add(volatile int *ptr, int inc)
 {
     int res;
 
     pthread_mutex_lock(&atomic_lock);
-    *ptr += inc;
     res = *ptr;
+    *ptr += inc;
     pthread_mutex_unlock(&atomic_lock);
 
     return res;
 }
 
+
+
+int avpriv_atomic_int_exchange(volatile int *ptr, int val)
+{
+    void *ret;
+    pthread_mutex_lock(&atomic_lock);
+    ret = *ptr;
+    *ptr = val;
+    pthread_mutex_unlock(&atomic_lock);
+    return ret;
+}
 void *avpriv_atomic_ptr_cas(void * volatile *ptr, void *oldval, void *newval)
 {
     void *ret;
@@ -82,12 +92,18 @@ void avpriv_atomic_int_set(volatile int *ptr, int val)
     *ptr = val;
 }
 
-int avpriv_atomic_int_add_and_fetch(volatile int *ptr, int inc)
+int avpriv_atomic_int_fetch_add(volatile int *ptr, int inc)
 {
+    int ret = *ptr;
     *ptr += inc;
-    return *ptr;
+    return ret;
 }
-
+int avpriv_atomic_int_exchange(volatile int *ptr, int inc)
+{
+    int ret = *ptr;
+    *ptr = inc;
+    return ret;
+}
 void *avpriv_atomic_ptr_cas(void * volatile *ptr, void *oldval, void *newval)
 {
     if (*ptr == oldval) {

@@ -534,6 +534,8 @@ int av_packet_shrink_side_data(AVPacket *pkt, enum AVPacketSideDataType type,
 
 int av_packet_copy_props(AVPacket *dst, const AVPacket *src)
 {
+    if((const AVPacket*)dst == src)
+        return 0;
     int i;
 
     dst->pts                  = src->pts;
@@ -550,9 +552,9 @@ FF_ENABLE_DEPRECATION_WARNINGS
 
     for (i = 0; i < src->side_data_elems; i++) {
          enum AVPacketSideDataType type = src->side_data[i].type;
-         int size          = src->side_data[i].size;
-         uint8_t *src_data = src->side_data[i].data;
-         uint8_t *dst_data = av_packet_new_side_data(dst, type, size);
+         int size                       = src->side_data[i].size;
+         uint8_t *src_data              = src->side_data[i].data;
+         uint8_t *dst_data              = av_packet_new_side_data(dst, type, size);
 
         if (!dst_data) {
             av_packet_free_side_data(dst);

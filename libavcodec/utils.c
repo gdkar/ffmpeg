@@ -3869,7 +3869,7 @@ int ff_lock_avcodec(AVCodecContext *log_ctx, const AVCodec *codec)
             return -1;
     }
 
-    if (avpriv_atomic_int_add_and_fetch(&entangled_thread_counter, 1) != 1) {
+    if (avpriv_atomic_int_fetch_add(&entangled_thread_counter, 1)) {
         av_log(log_ctx, AV_LOG_ERROR,
                "Insufficient thread locking. At least %d threads are "
                "calling avcodec_open2() at the same time right now.\n",
@@ -3892,7 +3892,7 @@ int ff_unlock_avcodec(const AVCodec *codec)
 
     av_assert0(ff_avcodec_locked);
     ff_avcodec_locked = 0;
-    avpriv_atomic_int_add_and_fetch(&entangled_thread_counter, -1);
+    avpriv_atomic_int_fetch_add(&entangled_thread_counter, -1);
     if (lockmgr_cb) {
         if ((*lockmgr_cb)(&codec_mutex, AV_LOCK_RELEASE))
             return -1;

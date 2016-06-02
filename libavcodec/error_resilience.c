@@ -808,15 +808,15 @@ void ff_er_add_slice(ERContext *s, int startx, int starty,
     mask &= ~VP_START;
     if (status & (ER_AC_ERROR | ER_AC_END)) {
         mask           &= ~(ER_AC_ERROR | ER_AC_END);
-        avpriv_atomic_int_add_and_fetch(&s->error_count, start_i - end_i - 1);
+        avpriv_atomic_int_fetch_add(&s->error_count, start_i - end_i - 1);
     }
     if (status & (ER_DC_ERROR | ER_DC_END)) {
         mask           &= ~(ER_DC_ERROR | ER_DC_END);
-        avpriv_atomic_int_add_and_fetch(&s->error_count, start_i - end_i - 1);
+        avpriv_atomic_int_fetch_add(&s->error_count, start_i - end_i - 1);
     }
     if (status & (ER_MV_ERROR | ER_MV_END)) {
         mask           &= ~(ER_MV_ERROR | ER_MV_END);
-        avpriv_atomic_int_add_and_fetch(&s->error_count, start_i - end_i - 1);
+        avpriv_atomic_int_fetch_add(&s->error_count, start_i - end_i - 1);
     }
 
     if (status & ER_MB_ERROR) {

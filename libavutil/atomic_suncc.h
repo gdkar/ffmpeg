@@ -38,10 +38,10 @@ static inline void atomic_int_set_suncc(volatile int *ptr, int val)
     __machine_rw_barrier();
 }
 
-#define avpriv_atomic_int_add_and_fetch atomic_int_add_and_fetch_suncc
-static inline int atomic_int_add_and_fetch_suncc(volatile int *ptr, int inc)
+#define avpriv_atomic_int_fetch_add atomic_int_fetch_add_suncc
+static inline int atomic_int_fetch_add_suncc(volatile int *ptr, int inc)
 {
-    return atomic_add_int_nv(ptr, inc);
+    return atomic_add_int_nv(ptr, inc) - inc;
 }
 
 #define avpriv_atomic_ptr_cas atomic_ptr_cas_suncc

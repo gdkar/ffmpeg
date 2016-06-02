@@ -25,37 +25,22 @@
 
 #include "atomic.h"
 
-#define avpriv_atomic_int_get atomic_int_get_gcc
-static inline int atomic_int_get_gcc(volatile int *ptr)
-{
+#define avpriv_atomic_int_get(ptr) __atomic_load_n((ptr),__ATOMIC_SEQ_CST)
+#define avpriv_atomic_ptr_get(ptr) __atomic_load_n((ptr),__ATOMIC_SEQ_CST)
+#define avpriv_atomic_int_set(ptr,val) __atomic_store_n((ptr),(val),__ATOMIC_SEQ_CST)
+#define avpriv_atomic_ptr_set(ptr,val) __atomic_store_n((ptr),(val),__ATOMIC_SEQ_CST)
 #if HAVE_ATOMIC_COMPARE_EXCHANGE
-    return __atomic_load_n(ptr, __ATOMIC_SEQ_CST);
+#define avpriv_atomic_int_fetch_add(ptr,inc) __atomic_fetch_add((ptr),(inc),__ATOMIC_SEQ_CST)
 #else
-    __sync_synchronize();
-    return *ptr;
+#define avpriv_atomic_int_fetch_add(ptr,inc) __sync_fetch_add((ptr),(inc))
 #endif
-}
-
-#define avpriv_atomic_int_set atomic_int_set_gcc
-static inline void atomic_int_set_gcc(volatile int *ptr, int val)
-{
 #if HAVE_ATOMIC_COMPARE_EXCHANGE
-    __atomic_store_n(ptr, val, __ATOMIC_SEQ_CST);
+#define avpriv_atomic_int_exchange(ptr,inc) __atomic_exchange_n((ptr),(inc),__ATOMIC_SEQ_CST)
+#define avpriv_atomic_ptr_exchange(ptr,inc) __atomic_exchange_n((ptr),(inc),__ATOMIC_SEQ_CST)
 #else
-    *ptr = val;
-    __sync_synchronize();
+#define avpriv_atomic_int_exchange(ptr,inc) __sync_lock_test_and_set((ptr),(inc))
+#define avpriv_atomic_ptr_exchange(ptr,inc) __sync_lock_test_and_set((ptr),(inc))
 #endif
-}
-
-#define avpriv_atomic_int_add_and_fetch atomic_int_add_and_fetch_gcc
-static inline int atomic_int_add_and_fetch_gcc(volatile int *ptr, int inc)
-{
-#if HAVE_ATOMIC_COMPARE_EXCHANGE
-    return __atomic_add_fetch(ptr, inc, __ATOMIC_SEQ_CST);
-#else
-    return __sync_add_and_fetch(ptr, inc);
-#endif
-}
 
 #define avpriv_atomic_ptr_cas atomic_ptr_cas_gcc
 static inline void *atomic_ptr_cas_gcc(void * volatile *ptr,
