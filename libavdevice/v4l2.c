@@ -402,7 +402,7 @@ static int enqueue_buffer(struct video_data *s, struct v4l2_buffer *buf)
         res = AVERROR(errno);
         av_log(NULL, AV_LOG_ERROR, "ioctl(VIDIOC_QBUF): %s\n", av_err2str(res));
     } else {
-        avpriv_atomic_int_add_and_fetch(&s->buffers_queued, 1);
+        avpriv_atomic_int_fetch_add(&s->buffers_queued, 1);
     }
 
     return res;
@@ -510,7 +510,7 @@ static int mmap_read_frame(AVFormatContext *ctx, AVPacket *pkt)
         av_log(ctx, AV_LOG_ERROR, "Invalid buffer index received.\n");
         return AVERROR(EINVAL);
     }
-    avpriv_atomic_int_add_and_fetch(&s->buffers_queued, -1);
+    avpriv_atomic_int_fetch_add(&s->buffers_queued, -1);
     // always keep at least one buffer queued
     av_assert0(avpriv_atomic_int_get(&s->buffers_queued) >= 1);
 

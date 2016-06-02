@@ -23,7 +23,7 @@
 
 #include "buffer.h"
 #include "thread.h"
-
+#include "atomic.h"
 /**
  * The buffer is always treated as read-only.
  */

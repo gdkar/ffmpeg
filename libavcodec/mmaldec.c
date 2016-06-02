@@ -96,7 +96,7 @@ typedef struct MMALDecodeContext {
 
 static void ffmmal_poolref_unref(FFPoolRef *ref)
 {
-    if (ref && avpriv_atomic_int_add_and_fetch(&ref->refcount, -1) == 0) {
+    if (ref && avpriv_atomic_int_fetch_add(&ref->refcount, -1) == 1) {
         mmal_pool_destroy(ref->pool);
         av_free(ref);
     }
@@ -132,7 +132,7 @@ static int ffmmal_set_ref(AVFrame *frame, FFPoolRef *pool,
         return AVERROR(ENOMEM);
     }
 
-    avpriv_atomic_int_add_and_fetch(&ref->pool->refcount, 1);
+    avpriv_atomic_int_fetch_add(&ref->pool->refcount, 1);
     mmal_buffer_header_acquire(buffer);
 
     frame->format = AV_PIX_FMT_MMAL;
@@ -163,7 +163,7 @@ static void ffmmal_stop_decoder(AVCodecContext *avctx)
         ctx->waiting_buffers = buffer->next;
 
         if (buffer->flags & MMAL_BUFFER_HEADER_FLAG_FRAME_END)
-            avpriv_atomic_int_add_and_fetch(&ctx->packets_buffered, -1);
+            avpriv_atomic_int_fetch_add(&ctx->packets_buffered, -1);
 
         av_buffer_unref(&buffer->ref);
         av_free(buffer);
@@ -202,7 +202,7 @@ static void input_callback(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer)
         FFBufferEntry *entry = buffer->user_data;
         av_buffer_unref(&entry->ref);
         if (entry->flags & MMAL_BUFFER_HEADER_FLAG_FRAME_END)
-            avpriv_atomic_int_add_and_fetch(&ctx->packets_buffered, -1);
+            avpriv_atomic_int_fetch_add(&ctx->packets_buffered, -1);
         av_free(entry);
     }
     mmal_buffer_header_release(buffer);
@@ -525,7 +525,7 @@ static int ffmmal_add_packet(AVCodecContext *avctx, AVPacket *avpkt,
 
         if (!size) {
             buffer->flags |= MMAL_BUFFER_HEADER_FLAG_FRAME_END;
-            avpriv_atomic_int_add_and_fetch(&ctx->packets_buffered, 1);
+            avpriv_atomic_int_fetch_add(&ctx->packets_buffered, 1);
         }
 
         if (!buffer->length) {
@@ -590,7 +590,7 @@ static int ffmmal_fill_input_port(AVCodecContext *avctx)
             mmal_buffer_header_release(mbuffer);
             av_buffer_unref(&buffer->ref);
             if (buffer->flags & MMAL_BUFFER_HEADER_FLAG_FRAME_END)
-                avpriv_atomic_int_add_and_fetch(&ctx->packets_buffered, -1);
+                avpriv_atomic_int_fetch_add(&ctx->packets_buffered, -1);
             av_free(buffer);
         }
 
