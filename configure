@@ -292,6 +292,7 @@ External library support:
   --disable-schannel       disable SChannel SSP, needed for TLS support on
                            Windows if openssl and gnutls are not used [autodetect]
   --disable-sdl            disable sdl [autodetect]
+  --disable-sdl2           disable sdl2 [autodetect]
   --disable-securetransport disable Secure Transport, needed for TLS support
                            on OSX if openssl and gnutls are not used [autodetect]
   --enable-x11grab         enable X11 grabbing (legacy) [no]
@@ -1547,6 +1548,7 @@ EXTERNAL_LIBRARY_LIST="
     opengl
     openssl
     schannel
+    sdl2
     sdl
     securetransport
     videotoolbox
@@ -2022,6 +2024,7 @@ HAVE_LIST="
     MMAL_PARAMETER_VIDEO_MAX_NUM_CALLBACKS
     perl
     pod2man
+    sdl2
     sdl
     section_data_rel_ro
     texi2html
@@ -2929,6 +2932,7 @@ pulse_indev_deps="libpulse"
 pulse_outdev_deps="libpulse"
 qtkit_indev_extralibs="-framework QTKit -framework Foundation -framework QuartzCore"
 qtkit_indev_select="qtkit"
+sdl2_outdev_deps="sdl2"
 sdl_outdev_deps="sdl"
 sndio_indev_deps="sndio_h"
 sndio_outdev_deps="sndio_h"
@@ -5829,6 +5833,27 @@ if enabled gcrypt; then
         require2 gcrypt gcrypt.h gcry_mpi_new -lgcrypt
     fi
 fi
+if ! disabled sdl2; then
+    SDL2_CONFIG="${cross_prefix}sdl2-config"
+    if check_pkg_config sdl2 SDL2/SDL_events.h SDL_PollEvent; then
+        check_cpp_condition SDL2/SDL.h "(SDL_MAJOR_VERSION<<16 | SDL_MINOR_VERSION<<8 | SDL_PATCHLEVEL) >= 0x020000" $sdl2_cflags &&
+        enable sdl2
+    else
+        if "${SDL2_CONFIG}" --version > /dev/null 2>&1; then
+            sdl2_cflags=$("${SDL2_CONFIG}" --cflags)
+            sdl2_libs=$("${SDL2_CONFIG}" --libs)
+            check_func_headers SDL2/SDL_version.h SDL_Linked_Version $sdl2_cflags $sdl2_libs &&
+            check_cpp_condition SDL.h "(SDL_MAJOR_VERSION<<16 | SDL_MINOR_VERSION<<8 | SDL_PATCHLEVEL) >= 0x020000" $sdl2_cflags &&
+            enable sdl2
+        elif enabled sdl2 ; then
+            die "ERROR: SDL not found"
+        else
+            disable sdl2
+        fi
+    fi
+fi
+
+enabled sdl2 && add_cflags $sdl2_cflags && add_extralibs $sdl2_libs
 
 if ! disabled sdl; then
     SDL_CONFIG="${cross_prefix}sdl-config"
@@ -6440,6 +6465,7 @@ echo "network support           ${network-no}"
 echo "threading support         ${thread_type-no}"
 echo "safe bitstream reader     ${safe_bitstream_reader-no}"
 echo "SDL support               ${sdl-no}"
+echo "SDL2 support               ${sdl2-no}"
 echo "opencl enabled            ${opencl-no}"
 echo "JNI support               ${jni-no}"
 echo "texi2html enabled         ${texi2html-no}"
