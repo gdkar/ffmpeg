@@ -25,6 +25,7 @@
  */
 
 #include "config.h"
+#include "libavutil/thread.h"
 #include "avcodec.h"
 #include "version.h"
 
@@ -58,13 +59,20 @@
             av_register_codec_parser(&ff_##x##_parser);                 \
     }
 
+static AVOnce avcodec_reg_once = AV_ONCE_INIT;
+static void avcodec_register_all_once(void);
 void avcodec_register_all(void)
 {
-    static int initialized;
+    static int initialized = 0;
 
     if (initialized)
         return;
+
+    ff_thread_once(&avcodec_reg_once,avcodec_register_all_once);
     initialized = 1;
+}
+static void avcodec_register_all_once(void)
+{
 
     /* hardware accelerators */
     REGISTER_HWACCEL(H263_VAAPI,        h263_vaapi);

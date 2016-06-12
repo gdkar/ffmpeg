@@ -32,20 +32,22 @@
 #include "parser.h"
 
 static AVCodecParser *av_first_parser = NULL;
+static AVCodecParser **av_last_parser = &av_first_parser;
 
 AVCodecParser *av_parser_next(const AVCodecParser *p)
 {
     if (p)
-        return p->next;
+        return avpriv_atomic_get(&p->next);
     else
-        return av_first_parser;
+        return avpriv_atomic_get(&av_first_parser);
 }
 
 void av_register_codec_parser(AVCodecParser *parser)
 {
-    do {
-        parser->next = av_first_parser;
-    } while (parser->next != avpriv_atomic_ptr_cas((void * volatile *)&av_first_parser, parser->next, parser));
+    AVCodecParser **p = NULL;
+    parser->next = NULL;
+    p = avpriv_atomic_exchange(&av_last_parser, &parser->next);
+    avpriv_atomic_set(p, parser);
 }
 
 AVCodecParserContext *av_parser_init(int codec_id)

@@ -19,6 +19,7 @@
  */
 
 #include "config.h"
+#include "libavutil/thread.h"
 #include "avdevice.h"
 
 #define REGISTER_OUTDEV(X, x)                                           \
@@ -37,14 +38,19 @@
 
 #define REGISTER_INOUTDEV(X, x) REGISTER_OUTDEV(X, x); REGISTER_INDEV(X, x)
 
+static AVOnce avdevice_reg_once = AV_ONCE_INIT;
+static void avdevice_register_all_once(void);
 void avdevice_register_all(void)
 {
-    static int initialized;
-
-    if (initialized)
+    static int initialized = 0;
+    if(initialized)
         return;
+    ff_thread_once(&avdevice_reg_once,&avdevice_register_all_once);
     initialized = 1;
+}
 
+static void avdevice_register_all_once(void)
+{
     /* devices */
     REGISTER_INOUTDEV(ALSA,             alsa);
     REGISTER_INDEV   (AVFOUNDATION,     avfoundation);

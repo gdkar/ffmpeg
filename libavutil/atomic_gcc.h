@@ -25,39 +25,36 @@
 
 #include "atomic.h"
 
-#define avpriv_atomic_int_get(ptr) __atomic_load_n((ptr),__ATOMIC_SEQ_CST)
-#define avpriv_atomic_ptr_get(ptr) __atomic_load_n((ptr),__ATOMIC_SEQ_CST)
-#define avpriv_atomic_int_set(ptr,val) __atomic_store_n((ptr),(val),__ATOMIC_SEQ_CST)
+#define avpriv_atomic_get(ptr) __atomic_load_n((ptr),__ATOMIC_SEQ_CST)
+#define avpriv_atomic_set(ptr,val) __atomic_store_n((ptr),(val),__ATOMIC_SEQ_CST)
 #define avpriv_atomic_ptr_set(ptr,val) __atomic_store_n((ptr),(val),__ATOMIC_SEQ_CST)
 #if HAVE_ATOMIC_COMPARE_EXCHANGE
-#define avpriv_atomic_int_fetch_add(ptr,inc) __atomic_fetch_add((ptr),(inc),__ATOMIC_SEQ_CST)
+#   define avpriv_atomic_fetch_add(ptr,inc) __atomic_fetch_add((ptr),(inc),__ATOMIC_SEQ_CST)
+#   define avpriv_atomic_fetch_sub(ptr,inc) __atomic_fetch_sub((ptr),(inc),__ATOMIC_SEQ_CST)
+#   define avpriv_atomic_exchange(ptr,inc) __atomic_exchange_n((ptr),(inc),__ATOMIC_SEQ_CST)
+#   define avpriv_atomic_cas(p,o,n) \
+    __atomic_compare_exchange_n((p), &(o), (n), 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
 #else
-#define avpriv_atomic_int_fetch_add(ptr,inc) __sync_fetch_add((ptr),(inc))
+#   define avpriv_atomic_fetch_add(ptr,inc) __sync_fetch_add((ptr),(inc))
+#   define avpriv_atomic_fetch_sub(ptr,inc) __sync_fetch_sub((ptr),(inc))
+#   define avpriv_atomic_exchange(ptr,inc) __sync_lock_test_and_set((ptr),(inc))
+#   define avpriv_atomic_cas(p,o,n) ({ \
+        __typeof__(o) __atomic_cas_o = (o); \
+        __atomic_cas_o == ((o) = __sync_val_compare_and_swap((p),__atomic_cas_o,(n))); \
+        })
 #endif
-#if HAVE_ATOMIC_COMPARE_EXCHANGE
-#define avpriv_atomic_int_exchange(ptr,inc) __atomic_exchange_n((ptr),(inc),__ATOMIC_SEQ_CST)
-#define avpriv_atomic_ptr_exchange(ptr,inc) __atomic_exchange_n((ptr),(inc),__ATOMIC_SEQ_CST)
-#else
-#define avpriv_atomic_int_exchange(ptr,inc) __sync_lock_test_and_set((ptr),(inc))
-#define avpriv_atomic_ptr_exchange(ptr,inc) __sync_lock_test_and_set((ptr),(inc))
-#endif
+#define avpriv_atomic_int_get avpriv_atomic_get
+#define avpriv_atomic_int_set avpriv_atomic_set
+#define avpriv_atomic_int_fetch_add avpriv_atomic_fetch_add
+#define avpriv_atomic_int_fetch_sub avpriv_atomic_fetch_sub
+#define avpriv_atomic_int_exchange avpriv_atomic_exchange
+#define avpriv_atomic_int_cas avpriv_atomic_cas
 
-#define avpriv_atomic_ptr_cas atomic_ptr_cas_gcc
-static inline void *atomic_ptr_cas_gcc(void * volatile *ptr,
-                                       void *oldval, void *newval)
-{
-#if HAVE_SYNC_VAL_COMPARE_AND_SWAP
-#ifdef __ARMCC_VERSION
-    // armcc will throw an error if ptr is not an integer type
-    volatile uintptr_t *tmp = (volatile uintptr_t*)ptr;
-    return (void*)__sync_val_compare_and_swap(tmp, oldval, newval);
-#else
-    return __sync_val_compare_and_swap(ptr, oldval, newval);
-#endif
-#else
-    __atomic_compare_exchange_n(ptr, &oldval, newval, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
-    return oldval;
-#endif
-}
+#define avpriv_atomic_ptr_get avpriv_atomic_get
+#define avpriv_atomic_ptr_set avpriv_atomic_set
+#define avpriv_atomic_ptr_fetch_add avpriv_atomic_fetch_add
+#define avpriv_atomic_ptr_fetch_sub avpriv_atomic_fetch_sub
+#define avpriv_atomic_ptr_exchange avpriv_atomic_exchange
+#define avpriv_atomic_ptr_cas avpriv_atomic_cas
 
-#endif /* AVUTIL_ATOMIC_GCC_H */
+#endif

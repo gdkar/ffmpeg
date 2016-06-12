@@ -25,16 +25,29 @@
 #include <stdatomic.h>
 #include "atomic.h"
 
-#define avpriv_atomic_int_get(p) atomic_load(p)
-#define avpriv_atomic_int_set(p,v) atomic_store(p,v)
-#define avpriv_atomic_int_fetch_add(p,i) atomic_fetch_add((p),(i))
-#define avpriv_atomic_int_exchange(p,w) atomic_exchange((p),(w))
-#define avpriv_atomic_ptr_get(p) atomic_load(p)
-#define avpriv_atomic_ptr_set(p,v) atomic_store(p,v)
-#define avpriv_atomic_ptr_exchange(p,w) atomic_exchange((p),(w))
-#define avpriv_atomic_ptr_cas(p,o,n) ({ \
-            __typeof__(o) __atomic_cas_o = (o); \
-            atomic_compare_exchange_strong((p),&__atomic_cas_o,(n)); \
-            __atomic_cas_o; \
-        })
+#define avpriv_atomic_get(p) atomic_load(p)
+#define avpriv_atomic_set(p,v) atomic_store((p),(v))
+#define avpriv_atomic_fetch_add(p,v) \
+    atomic_fetch_add((p),(v))
+#define avpriv_atomic_fetch_sub(p,v) \
+    atomic_fetch_sub((p),(v))
+#define avpriv_atomic_exchange(p,v) \
+    atomic_exchange((p),(v))
+#define avpriv_atomic_cas(p,o,n) \
+    atomic_compare_exchange_strong((p),&(o),(n))
+
+#define avpriv_atomic_int_get avpriv_atomic_get
+#define avpriv_atomic_int_set avpriv_atomic_set
+#define avpriv_atomic_int_fetch_add avpriv_atomic_fetch_add
+#define avpriv_atomic_int_fetch_sub avpriv_atomic_fetch_sub
+#define avpriv_atomic_int_exchange avpriv_atomic_exchange
+#define avpriv_atomic_int_cas avpriv_atomic_cas
+
+#define avpriv_atomic_ptr_get avpriv_atomic_get
+#define avpriv_atomic_ptr_set avpriv_atomic_set
+#define avpriv_atomic_ptr_fetch_add avpriv_atomic_fetch_add
+#define avpriv_atomic_ptr_fetch_sub avpriv_atomic_fetch_sub
+#define avpriv_atomic_ptr_exchange avpriv_atomic_exchange
+#define avpriv_atomic_ptr_cas avpriv_atomic_cas
+
 #endif /* AVUTIL_ATOMIC_GCC_H */

@@ -348,18 +348,19 @@ void av_opencl_free_device_list(AVOpenCLDeviceList **device_list)
 static inline int init_opencl_mtx(void)
 {
 #if HAVE_THREADS
-    if (!atomic_opencl_lock) {
+    pthread_mutex_t *old = avpriv_atomic_get(&atomic_opencl_lock);
+    if (!old) {
         int err;
         pthread_mutex_t *tmp = av_malloc(sizeof(pthread_mutex_t));
         if (!tmp)
             return AVERROR(ENOMEM);
         if ((err = pthread_mutex_init(tmp, NULL))) {
-            av_free(tmp);
+            av_freep(tmp);
             return AVERROR(err);
         }
-        if (avpriv_atomic_ptr_cas((void * volatile *)&atomic_opencl_lock, NULL, tmp)) {
+        if (!avpriv_atomic_cas((void * volatile *)&atomic_opencl_lock, old, tmp)) {
             pthread_mutex_destroy(tmp);
-            av_free(tmp);
+            av_freep(tmp);
         }
     }
 #endif
