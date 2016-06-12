@@ -532,23 +532,18 @@ AVFilter *avfilter_get_by_name(const char *name)
 
 int avfilter_register(AVFilter *filter)
 {
-    AVFilter **f = last_filter;
-
+    AVFilter **f = NULL;
     /* the filter must select generic or internal exclusively */
     av_assert0((filter->flags & AVFILTER_FLAG_SUPPORT_TIMELINE) != AVFILTER_FLAG_SUPPORT_TIMELINE);
-
     filter->next = NULL;
-
-    while(*f || avpriv_atomic_ptr_cas((void * volatile *)f, NULL, filter))
-        f = &(*f)->next;
-    last_filter = &filter->next;
-
+    f = avpriv_atomic_exchange(&last_filter, &filter->next);
+    avpriv_atomic_set(f, filter); 
     return 0;
 }
 
 const AVFilter *avfilter_next(const AVFilter *prev)
 {
-    return prev ? prev->next : first_filter;
+    return prev ? avpriv_atomic_get(&prev->next) : avpriv_atomic_get(&first_filter);
 }
 
 #if FF_API_OLD_FILTER_REGISTER

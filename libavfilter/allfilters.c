@@ -20,6 +20,8 @@
  */
 
 #include "avfilter.h"
+#include "libavutil/thread.h"
+#include "libavutil/atomic.h"
 #include "config.h"
 #include "opencl_allkernels.h"
 
@@ -36,15 +38,14 @@
         extern AVFilter ff_##x;                                         \
         avfilter_register(&ff_##x);                                     \
     }
-
+static AVOnce avfilter_reg_once = AV_ONCE_INIT;
+static void avfilter_register_all_once(void);
 void avfilter_register_all(void)
 {
-    static int initialized;
-
-    if (initialized)
-        return;
-    initialized = 1;
-
+    ff_thread_once(&avfilter_reg_once, &avfilter_register_all_once);
+}
+static void avfilter_register_all_once(void)
+{
     REGISTER_FILTER(ABENCH,         abench,         af);
     REGISTER_FILTER(ACOMPRESSOR,    acompressor,    af);
     REGISTER_FILTER(ACROSSFADE,     acrossfade,     af);

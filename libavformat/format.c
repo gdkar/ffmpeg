@@ -60,22 +60,18 @@ AVOutputFormat *av_oformat_next(const AVOutputFormat *f)
 
 void av_register_input_format(AVInputFormat *format)
 {
-    AVInputFormat **p = last_iformat;
-    AVInputFormat  *q;
+    AVInputFormat **p = NULL;
     format->next = NULL;
-    while(avpriv_atomic_ptr_get(p) || (q = avpriv_atomic_ptr_cas((void * volatile *)p, NULL, format)))
-        p = &(q)->next;
-    last_iformat = &format->next;
+    p = avpriv_atomic_exchange(&last_iformat, &format->next);
+    avpriv_atomic_set(p,format);
 }
 
 void av_register_output_format(AVOutputFormat *format)
 {
-    AVOutputFormat **p = last_oformat;
-    AVOutputFormat  *q;
+    AVOutputFormat **q = NULL;
     format->next = NULL;
-    while(avpriv_atomic_ptr_get(p) || (q = avpriv_atomic_ptr_cas((void * volatile *)p, NULL, format)))
-        p = &(q)->next;
-    last_oformat = &format->next;
+    q = avpriv_atomic_exchange(&last_oformat, &format->next);
+    avpriv_atomic_set(q, format);
 }
 
 int av_match_ext(const char *filename, const char *extensions)

@@ -73,8 +73,9 @@ static int default_lockmgr_cb(void **arg, enum AVLockOp op)
     switch (op) {
     case AV_LOCK_CREATE:
         return 0;
-    case AV_LOCK_OBTAIN:
-        if (!*mutex) {
+    case AV_LOCK_OBTAIN:{
+        void *marg = avpriv_atomic_get(mutex);
+        if (!marg) {
             pthread_mutex_t *tmp = av_malloc(sizeof(pthread_mutex_t));
             if (!tmp)
                 return AVERROR(ENOMEM);
@@ -82,27 +83,32 @@ static int default_lockmgr_cb(void **arg, enum AVLockOp op)
                 av_free(tmp);
                 return AVERROR(err);
             }
-            if (avpriv_atomic_ptr_cas(mutex, NULL, tmp)) {
+            if (!avpriv_atomic_ptr_cas(mutex, marg, tmp)) {
                 pthread_mutex_destroy(tmp);
-                av_free(tmp);
+                av_freep(tmp);
+            }else{
+                marg = tmp;
             }
         }
-
-        if ((err = pthread_mutex_lock(*mutex)))
+        if ((err = pthread_mutex_lock(marg)))
             return AVERROR(err);
-
         return 0;
-    case AV_LOCK_RELEASE:
-        if ((err = pthread_mutex_unlock(*mutex)))
+                        }
+    case AV_LOCK_RELEASE:{
+        void *marg = avpriv_atomic_get(mutex);
+        if ((marg && (err = pthread_mutex_unlock(marg))))
             return AVERROR(err);
-
         return 0;
-    case AV_LOCK_DESTROY:
-        if (*mutex)
-            pthread_mutex_destroy(*mutex);
-        av_free(*mutex);
-        avpriv_atomic_ptr_cas(mutex, *mutex, NULL);
+        }
+    case AV_LOCK_DESTROY:{
+        void *marg = avpriv_atomic_exchange(mutex,NULL);
+        if (marg)
+            pthread_mutex_destroy(marg);
+        av_freep(marg);
         return 0;
+        }
+    default:
+        return 1;
     }
     return 1;
 }
@@ -177,15 +183,11 @@ int av_codec_is_decoder(const AVCodec *codec)
 
 av_cold void avcodec_register(AVCodec *codec)
 {
-    AVCodec **p;
+    AVCodec **p = NULL;
     avcodec_init();
-    p = last_avcodec;
     codec->next = NULL;
-
-    while(*p || avpriv_atomic_ptr_cas((void * volatile *)p, NULL, codec))
-        p = &(*p)->next;
-    last_avcodec = &codec->next;
-
+    p = avpriv_atomic_exchange(&last_avcodec, &codec->next);
+    avpriv_atomic_set(p, codec);
     if (codec->init_static_data)
         codec->init_static_data(codec);
 }
@@ -3726,16 +3728,15 @@ static AVHWAccel **last_hwaccel = &first_hwaccel;
 
 void av_register_hwaccel(AVHWAccel *hwaccel)
 {
-    AVHWAccel **p = last_hwaccel;
+    AVHWAccel **p = NULL;
     hwaccel->next = NULL;
-    while(*p || avpriv_atomic_ptr_cas((void * volatile *)p, NULL, hwaccel))
-        p = &(*p)->next;
-    last_hwaccel = &hwaccel->next;
+    p = avpriv_atomic_exchange(&last_hwaccel, &hwaccel->next);
+    avpriv_atomic_set((p), hwaccel);
 }
 
 AVHWAccel *av_hwaccel_next(const AVHWAccel *hwaccel)
 {
-    return hwaccel ? hwaccel->next : first_hwaccel;
+    return avpriv_atomic_get((hwaccel ? &hwaccel->next : &first_hwaccel));
 }
 
 int av_lockmgr_register(int (*cb)(void **mutex, enum AVLockOp op))

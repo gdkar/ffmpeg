@@ -20,6 +20,7 @@
  */
 
 #include "avformat.h"
+#include "libavutil/thread.h"
 #include "rtp.h"
 #include "rdt.h"
 #include "url.h"
@@ -41,12 +42,18 @@
 
 #define REGISTER_MUXDEMUX(X, x) REGISTER_MUXER(X, x); REGISTER_DEMUXER(X, x)
 
+static AVOnce avformat_reg_once = AV_ONCE_INIT;
+static void av_register_all_once(void);
 void av_register_all(void)
 {
-    static int initialized;
-
+    static int initialized = 0;
     if (initialized)
         return;
+    ff_thread_once(&avformat_reg_once, &av_register_all_once);
+    initialized = 1;
+}
+static void av_register_all_once(void)
+{
 
     avcodec_register_all();
 
@@ -378,5 +385,4 @@ void av_register_all(void)
     REGISTER_MUXDEMUX(LIBNUT,           libnut);
     REGISTER_DEMUXER (LIBOPENMPT,       libopenmpt);
 
-    initialized = 1;
 }
