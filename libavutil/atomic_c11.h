@@ -18,8 +18,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef AVUTIL_ATOMIC_GCC_H
-#define AVUTIL_ATOMIC_GCC_H
+#ifndef AVUTIL_ATOMIC_C11_H
+#define AVUTIL_ATOMIC_C11_H
 
 #include <stdint.h>
 #include <stdatomic.h>
@@ -50,4 +50,4 @@
 #define avpriv_atomic_ptr_exchange avpriv_atomic_exchange
 #define avpriv_atomic_ptr_cas avpriv_atomic_cas
 
-#endif /* AVUTIL_ATOMIC_GCC_H */
+#endif /* AVUTIL_ATOMIC_C11_H */
