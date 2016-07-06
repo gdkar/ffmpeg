@@ -5843,7 +5843,7 @@ if ! disabled sdl2; then
             sdl2_cflags=$("${SDL2_CONFIG}" --cflags)
             sdl2_libs=$("${SDL2_CONFIG}" --libs)
             check_func_headers SDL2/SDL_version.h SDL_Linked_Version $sdl2_cflags $sdl2_libs &&
-            check_cpp_condition SDL.h "(SDL_MAJOR_VERSION<<16 | SDL_MINOR_VERSION<<8 | SDL_PATCHLEVEL) >= 0x020000" $sdl2_cflags &&
+            check_cpp_condition SDL2/SDL.h "(SDL_MAJOR_VERSION<<16 | SDL_MINOR_VERSION<<8 | SDL_PATCHLEVEL) >= 0x020000" $sdl2_cflags &&
             enable sdl2
         elif enabled sdl2 ; then
             die "ERROR: SDL not found"
@@ -5857,17 +5857,17 @@ enabled sdl2 && add_cflags $sdl2_cflags && add_extralibs $sdl2_libs
 
 if ! disabled sdl; then
     SDL_CONFIG="${cross_prefix}sdl-config"
-    if check_pkg_config sdl SDL_events.h SDL_PollEvent; then
-        check_cpp_condition SDL.h "(SDL_MAJOR_VERSION<<16 | SDL_MINOR_VERSION<<8 | SDL_PATCHLEVEL) >= 0x010201" $sdl_cflags &&
-        check_cpp_condition SDL.h "(SDL_MAJOR_VERSION<<16 | SDL_MINOR_VERSION<<8 | SDL_PATCHLEVEL) < 0x010300" $sdl_cflags &&
+    if check_pkg_config sdl SDL/SDL_events.h SDL_PollEvent; then
+        check_cpp_condition SDL/SDL.h "(SDL_MAJOR_VERSION<<16 | SDL_MINOR_VERSION<<8 | SDL_PATCHLEVEL) >= 0x010201" $sdl_cflags &&
+        check_cpp_condition SDL/SDL.h "(SDL_MAJOR_VERSION<<16 | SDL_MINOR_VERSION<<8 | SDL_PATCHLEVEL) < 0x010300" $sdl_cflags &&
         enable sdl
     else
         if "${SDL_CONFIG}" --version > /dev/null 2>&1; then
             sdl_cflags=$("${SDL_CONFIG}" --cflags)
             sdl_libs=$("${SDL_CONFIG}" --libs)
-            check_func_headers SDL_version.h SDL_Linked_Version $sdl_cflags $sdl_libs &&
-            check_cpp_condition SDL.h "(SDL_MAJOR_VERSION<<16 | SDL_MINOR_VERSION<<8 | SDL_PATCHLEVEL) >= 0x010201" $sdl_cflags &&
-            check_cpp_condition SDL.h "(SDL_MAJOR_VERSION<<16 | SDL_MINOR_VERSION<<8 | SDL_PATCHLEVEL) < 0x010300" $sdl_cflags &&
+            check_func_headers SDL/SDL_version.h SDL_Linked_Version $sdl_cflags $sdl_libs &&
+            check_cpp_condition SDL/SDL.h "(SDL_MAJOR_VERSION<<16 | SDL_MINOR_VERSION<<8 | SDL_PATCHLEVEL) >= 0x010201" $sdl_cflags &&
+            check_cpp_condition SDL/SDL.h "(SDL_MAJOR_VERSION<<16 | SDL_MINOR_VERSION<<8 | SDL_PATCHLEVEL) < 0x010300" $sdl_cflags &&
             enable sdl
         elif enabled sdl ; then
             die "ERROR: SDL not found"
