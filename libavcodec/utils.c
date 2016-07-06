@@ -73,21 +73,21 @@ static int default_lockmgr_cb(void **arg, enum AVLockOp op)
     switch (op) {
     case AV_LOCK_CREATE:
         return 0;
-    case AV_LOCK_OBTAIN:{
-        void *marg = avpriv_atomic_get(mutex);
+    case AV_LOCK_OBTAIN: {
+        pthread_mutex_t *marg = avpriv_atomic_get(mutex);
         if (!marg) {
-            pthread_mutex_t *tmp = av_malloc(sizeof(pthread_mutex_t));
+            pthread_mutex_t *tmp = av_mallocz(sizeof(*tmp));
             if (!tmp)
                 return AVERROR(ENOMEM);
             if ((err = pthread_mutex_init(tmp, NULL))) {
-                av_free(tmp);
+                av_freep(&tmp);
                 return AVERROR(err);
             }
-            if (!avpriv_atomic_ptr_cas(mutex, marg, tmp)) {
-                pthread_mutex_destroy(tmp);
-                av_freep(tmp);
-            }else{
+            if (avpriv_atomic_ptr_cas(mutex, marg, tmp)) {
                 marg = tmp;
+            }else{
+                pthread_mutex_destroy(tmp);
+                av_freep(&tmp);
             }
         }
         if ((err = pthread_mutex_lock(marg)))
@@ -95,16 +95,16 @@ static int default_lockmgr_cb(void **arg, enum AVLockOp op)
         return 0;
                         }
     case AV_LOCK_RELEASE:{
-        void *marg = avpriv_atomic_get(mutex);
+        pthread_mutex_t *marg = avpriv_atomic_get(mutex);
         if ((marg && (err = pthread_mutex_unlock(marg))))
             return AVERROR(err);
         return 0;
         }
     case AV_LOCK_DESTROY:{
-        void *marg = avpriv_atomic_exchange(mutex,NULL);
+        pthread_mutex_t *marg = avpriv_atomic_exchange(mutex,NULL);
         if (marg)
             pthread_mutex_destroy(marg);
-        av_freep(marg);
+        av_freep(&marg);
         return 0;
         }
     default:
