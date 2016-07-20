@@ -47,7 +47,7 @@
 #endif
 
 #if HAVE_SDL
-#include <SDL.h>
+#include <SDL/SDL.h>
 #endif
 
 #include "libavutil/common.h"

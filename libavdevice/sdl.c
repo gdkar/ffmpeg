@@ -23,8 +23,8 @@
  * libSDL output device
  */
 
-#include <SDL.h>
-#include <SDL_thread.h>
+#include <SDL/SDL.h>
+#include <SDL/SDL_thread.h>
 
 #include "libavutil/avstring.h"
 #include "libavutil/imgutils.h"
