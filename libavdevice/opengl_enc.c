@@ -46,8 +46,8 @@
 #include <GL/glx.h>
 #endif
 
-#if HAVE_SDL2
-#include <SDL.h>
+#if HAVE_SDL
+#include <SDL/SDL.h>
 #endif
 
 #include "libavutil/common.h"
@@ -174,9 +174,8 @@ static const GLushort g_index[6] =
 typedef struct OpenGLContext {
     AVClass *class;                    ///< class for private options
 
-#if HAVE_SDL2
-    SDL_Window *window;
-    SDL_GLContext glcontext;
+#if HAVE_SDL
+    SDL_Surface *surface;
 #endif
     FFOpenGLFunctions glprocs;
 
@@ -342,14 +341,30 @@ static int opengl_control_message(AVFormatContext *h, int type, void *data, size
     return AVERROR(ENOSYS);
 }
 
-#if HAVE_SDL2
+#if HAVE_SDL
+static int opengl_sdl_recreate_window(OpenGLContext *opengl, int width, int height)
+{
+    opengl->surface = SDL_SetVideoMode(width, height,
+                                       32, SDL_OPENGL | SDL_RESIZABLE);
+    if (!opengl->surface) {
+        av_log(opengl, AV_LOG_ERROR, "Unable to set video mode: %s\n", SDL_GetError());
+        return AVERROR_EXTERNAL;
+    }
+    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    return 0;
+}
+
 static int opengl_sdl_process_events(AVFormatContext *h)
 {
+    int ret;
     OpenGLContext *opengl = h->priv_data;
-    AVDeviceRect message;
     SDL_Event event;
     SDL_PumpEvents();
-    while (SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) > 0) {
+    while (SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_ALLEVENTS) > 0) {
         switch (event.type) {
         case SDL_QUIT:
             return AVERROR(EIO);
@@ -360,14 +375,23 @@ static int opengl_sdl_process_events(AVFormatContext *h)
                 return AVERROR(EIO);
             }
             return 0;
-        case SDL_WINDOWEVENT:
-            switch(event.window.event) {
-            case SDL_WINDOWEVENT_RESIZED:
-            case SDL_WINDOWEVENT_SIZE_CHANGED:
-                SDL_GL_GetDrawableSize(opengl->window, &message.width, &message.height);
-                return opengl_control_message(h, AV_APP_TO_DEV_WINDOW_SIZE, &message, sizeof(AVDeviceRect));
-            default:
-                break;
+        case SDL_VIDEORESIZE: {
+            char buffer[100];
+            int reinit;
+            AVDeviceRect message;
+            /* clean up old context because SDL_SetVideoMode may lose its state. */
+            SDL_VideoDriverName(buffer, sizeof(buffer));
+            reinit = !av_strncasecmp(buffer, "quartz", sizeof(buffer));
+            if (reinit) {
+                opengl_deinit_context(opengl);
+            }
+            if ((ret = opengl_sdl_recreate_window(opengl, event.resize.w, event.resize.h)) < 0)
+                return ret;
+            if (reinit && (ret = opengl_init_context(opengl)) < 0)
+                return ret;
+            message.width = opengl->surface->w;
+            message.height = opengl->surface->h;
+            return opengl_control_message(h, AV_APP_TO_DEV_WINDOW_SIZE, &message, sizeof(AVDeviceRect));
             }
         }
     }
@@ -376,34 +400,23 @@ static int opengl_sdl_process_events(AVFormatContext *h)
 
 static int av_cold opengl_sdl_create_window(AVFormatContext *h)
 {
+    int ret;
+    char buffer[100];
     OpenGLContext *opengl = h->priv_data;
     AVDeviceRect message;
     if (SDL_Init(SDL_INIT_VIDEO)) {
         av_log(opengl, AV_LOG_ERROR, "Unable to initialize SDL: %s\n", SDL_GetError());
         return AVERROR_EXTERNAL;
     }
-    opengl->window = SDL_CreateWindow(opengl->window_title,
-                                      SDL_WINDOWPOS_UNDEFINED,
-                                      SDL_WINDOWPOS_UNDEFINED,
-                                      opengl->window_width, opengl->window_height,
-                                      SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
-    if (!opengl->window) {
-        av_log(opengl, AV_LOG_ERROR, "Unable to create default window: %s\n", SDL_GetError());
-        return AVERROR_EXTERNAL;
-    }
-    opengl->glcontext = SDL_GL_CreateContext(opengl->window);
-    if (!opengl->glcontext) {
-        av_log(opengl, AV_LOG_ERROR, "Unable to create OpenGL context on default window: %s\n", SDL_GetError());
-        return AVERROR_EXTERNAL;
-    }
-    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    av_log(opengl, AV_LOG_INFO, "SDL driver: '%s'.\n", SDL_GetCurrentVideoDriver());
-    SDL_GL_GetDrawableSize(opengl->window, &message.width, &message.height);
-    return opengl_control_message(h, AV_APP_TO_DEV_WINDOW_SIZE, &message, sizeof(AVDeviceRect));
+    if ((ret = opengl_sdl_recreate_window(opengl, opengl->window_width,
+                                          opengl->window_height)) < 0)
+        return ret;
+    av_log(opengl, AV_LOG_INFO, "SDL driver: '%s'.\n", SDL_VideoDriverName(buffer, sizeof(buffer)));
+    message.width = opengl->surface->w;
+    message.height = opengl->surface->h;
+    SDL_WM_SetCaption(opengl->window_title, NULL);
+    opengl_control_message(h, AV_APP_TO_DEV_WINDOW_SIZE, &message, sizeof(AVDeviceRect));
+    return 0;
 }
 
 static int av_cold opengl_sdl_load_procedures(OpenGLContext *opengl)
@@ -447,14 +460,14 @@ static int av_cold opengl_sdl_load_procedures(OpenGLContext *opengl)
 
 #undef LOAD_OPENGL_FUN
 }
-#endif /* HAVE_SDL2 */
+#endif /* HAVE_SDL */
 
 #if defined(__APPLE__)
 static int av_cold opengl_load_procedures(OpenGLContext *opengl)
 {
     FFOpenGLFunctions *procs = &opengl->glprocs;
 
-#if HAVE_SDL2
+#if HAVE_SDL
     if (!opengl->no_window)
         return opengl_sdl_load_procedures(opengl);
 #endif
@@ -504,7 +517,7 @@ static int av_cold opengl_load_procedures(OpenGLContext *opengl)
         return AVERROR(ENOSYS); \
     }
 
-#if HAVE_SDL2
+#if HAVE_SDL
     if (!opengl->no_window)
         return opengl_sdl_load_procedures(opengl);
 #endif
@@ -930,7 +943,7 @@ static int opengl_create_window(AVFormatContext *h)
     int ret;
 
     if (!opengl->no_window) {
-#if HAVE_SDL2
+#if HAVE_SDL
         if ((ret = opengl_sdl_create_window(h)) < 0) {
             av_log(opengl, AV_LOG_ERROR, "Cannot create default SDL window.\n");
             return ret;
@@ -962,9 +975,7 @@ static int opengl_release_window(AVFormatContext *h)
     int ret;
     OpenGLContext *opengl = h->priv_data;
     if (!opengl->no_window) {
-#if HAVE_SDL2
-        SDL_GL_DeleteContext(opengl->glcontext);
-        SDL_DestroyWindow(opengl->window);
+#if HAVE_SDL
         SDL_Quit();
 #endif
     } else if ((ret = avdevice_dev_to_app_control_message(h, AV_DEV_TO_APP_DESTROY_WINDOW_BUFFER, NULL , 0)) < 0) {
@@ -1098,9 +1109,9 @@ static av_cold int opengl_write_header(AVFormatContext *h)
 
     glClear(GL_COLOR_BUFFER_BIT);
 
-#if HAVE_SDL2
+#if HAVE_SDL
     if (!opengl->no_window)
-        SDL_GL_SwapWindow(opengl->window);
+        SDL_GL_SwapBuffers();
 #endif
     if (opengl->no_window &&
         (ret = avdevice_dev_to_app_control_message(h, AV_DEV_TO_APP_DISPLAY_WINDOW_BUFFER, NULL , 0)) < 0) {
@@ -1193,7 +1204,7 @@ static int opengl_draw(AVFormatContext *h, void *input, int repaint, int is_pkt)
     const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(pix_fmt);
     int ret;
 
-#if HAVE_SDL2
+#if HAVE_SDL
     if (!opengl->no_window && (ret = opengl_sdl_process_events(h)) < 0)
         goto fail;
 #endif
@@ -1234,9 +1245,9 @@ static int opengl_draw(AVFormatContext *h, void *input, int repaint, int is_pkt)
     ret = AVERROR_EXTERNAL;
     OPENGL_ERROR_CHECK(opengl);
 
-#if HAVE_SDL2
+#if HAVE_SDL
     if (!opengl->no_window)
-        SDL_GL_SwapWindow(opengl->window);
+        SDL_GL_SwapBuffers();
 #endif
     if (opengl->no_window &&
         (ret = avdevice_dev_to_app_control_message(h, AV_DEV_TO_APP_DISPLAY_WINDOW_BUFFER, NULL , 0)) < 0) {
