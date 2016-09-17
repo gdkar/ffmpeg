@@ -35,23 +35,21 @@
 
 struct AVBuffer {
     uint8_t *data; /**< data described by this buffer */
-    int      size; /**< size of data in bytes */
-
-    /**
-     *  number of existing AVBufferRef instances referring to this buffer
-     */
-    volatile int refcount;
-
-    /**
-     * a callback for freeing the data
-     */
-    void (*free)(void *opaque, uint8_t *data);
 
     /**
      * an opaque pointer, to be used by the freeing callback
      */
     void *opaque;
 
+    /**
+     * a callback for freeing the data
+     */
+    void (*free)(void *opaque, uint8_t *data);
+    int      size; /**< size of data in bytes */
+    /**
+     *  number of existing AVBufferRef instances referring to this buffer
+     */
+    AV_ATOMIC(int) refcount;
     /**
      * A combination of BUFFER_FLAG_*
      */
@@ -60,7 +58,6 @@ struct AVBuffer {
 
 typedef struct BufferPoolEntry {
     uint8_t *data;
-
     /*
      * Backups of the original opaque/free of the AVBuffer corresponding to
      * data. They will be used to free the buffer when the pool is freed.
@@ -75,7 +72,6 @@ typedef struct BufferPoolEntry {
 struct AVBufferPool {
     AVMutex mutex;
     BufferPoolEntry *pool;
-
     /*
      * This is used to track when the pool is to be freed.
      * The pointer to the pool itself held by the caller is considered to
@@ -85,15 +81,14 @@ struct AVBufferPool {
      * buffers have been released, then it's safe to free the pool and all
      * the buffers in it.
      */
-    volatile int refcount;
-
-    volatile int nb_allocated;
+    AV_ATOMIC(int) refcount;
+    AV_ATOMIC(int) nb_allocated;
 
     int size;
     void *opaque;
+    void         (*pool_free)(void *opaque);
     AVBufferRef* (*alloc)(int size);
     AVBufferRef* (*alloc2)(void *opaque, int size);
-    void         (*pool_free)(void *opaque);
 };
 
 #endif /* AVUTIL_BUFFER_INTERNAL_H */

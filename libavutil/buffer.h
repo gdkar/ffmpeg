@@ -99,19 +99,16 @@ typedef struct AVBufferRef {
  * @return an AVBufferRef of given size or NULL when out of memory
  */
 AVBufferRef *av_buffer_alloc(int size);
-
 /**
  * Same as av_buffer_alloc(), except the returned buffer will be initialized
  * to zero.
  */
 AVBufferRef *av_buffer_allocz(int size);
-
 /**
  * Always treat the buffer as read-only, even when it has only one
  * reference.
  */
 #define AV_BUFFER_FLAG_READONLY (1 << 0)
-
 /**
  * Create an AVBuffer from an existing array.
  *
@@ -137,7 +134,6 @@ AVBufferRef *av_buffer_create(uint8_t *data, int size,
  * directly.
  */
 void av_buffer_default_free(void *opaque, uint8_t *data);
-
 /**
  * Create a new reference to an AVBuffer.
  *
@@ -145,7 +141,6 @@ void av_buffer_default_free(void *opaque, uint8_t *data);
  * failure.
  */
 AVBufferRef *av_buffer_ref(AVBufferRef *buf);
-
 /**
  * Free a given reference and automatically free the buffer if there are no more
  * references to it.
@@ -153,7 +148,6 @@ AVBufferRef *av_buffer_ref(AVBufferRef *buf);
  * @param buf the reference to be freed. The pointer is set to NULL on return.
  */
 void av_buffer_unref(AVBufferRef **buf);
-
 /**
  * @return 1 if the caller may write to the data referred to by buf (which is
  * true if and only if buf is the only reference to the underlying AVBuffer).
@@ -161,14 +155,11 @@ void av_buffer_unref(AVBufferRef **buf);
  * A positive answer is valid until av_buffer_ref() is called on buf.
  */
 int av_buffer_is_writable(const AVBufferRef *buf);
-
 /**
  * @return the opaque parameter set by av_buffer_create.
  */
 void *av_buffer_get_opaque(const AVBufferRef *buf);
-
 int av_buffer_get_ref_count(const AVBufferRef *buf);
-
 /**
  * Create a writable reference from a given buffer reference, avoiding data copy
  * if possible.
@@ -179,7 +170,6 @@ int av_buffer_get_ref_count(const AVBufferRef *buf);
  * @return 0 on success, a negative AVERROR on failure.
  */
 int av_buffer_make_writable(AVBufferRef **buf);
-
 /**
  * Reallocate a given buffer.
  *
@@ -196,7 +186,6 @@ int av_buffer_make_writable(AVBufferRef **buf);
  * a new buffer is allocated and the data is copied.
  */
 int av_buffer_realloc(AVBufferRef **buf, int size);
-
 /**
  * @}
  */
@@ -236,7 +225,6 @@ int av_buffer_realloc(AVBufferRef **buf, int size);
  * av_buffer_pool_uninit().
  */
 typedef struct AVBufferPool AVBufferPool;
-
 /**
  * Allocate and initialize a buffer pool.
  *
@@ -247,7 +235,6 @@ typedef struct AVBufferPool AVBufferPool;
  * @return newly created buffer pool on success, NULL on error.
  */
 AVBufferPool *av_buffer_pool_init(int size, AVBufferRef* (*alloc)(int size));
-
 /**
  * Allocate and initialize a buffer pool with a more complex allocator.
  *
@@ -264,7 +251,6 @@ AVBufferPool *av_buffer_pool_init(int size, AVBufferRef* (*alloc)(int size));
 AVBufferPool *av_buffer_pool_init2(int size, void *opaque,
                                    AVBufferRef* (*alloc)(void *opaque, int size),
                                    void (*pool_free)(void *opaque));
-
 /**
  * Mark the pool as being available for freeing. It will actually be freed only
  * once all the allocated buffers associated with the pool are released. Thus it
@@ -274,7 +260,6 @@ AVBufferPool *av_buffer_pool_init2(int size, void *opaque,
  * @param pool pointer to the pool to be freed. It will be set to NULL.
  */
 void av_buffer_pool_uninit(AVBufferPool **pool);
-
 /**
  * Allocate a new AVBuffer, reusing an old buffer from the pool when available.
  * This function may be called simultaneously from multiple threads.
@@ -282,7 +267,6 @@ void av_buffer_pool_uninit(AVBufferPool **pool);
  * @return a reference to the new buffer on success, NULL on error.
  */
 AVBufferRef *av_buffer_pool_get(AVBufferPool *pool);
-
 /**
  * @}
  */

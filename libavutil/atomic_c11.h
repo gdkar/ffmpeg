@@ -25,6 +25,10 @@
 #include <stdatomic.h>
 #include "atomic.h"
 
+#ifndef AV_ATOMIC
+#define AV_ATOMIC(type) _Atomic(type)
+#endif
+
 #define avpriv_atomic_get(p) atomic_load(p)
 #define avpriv_atomic_set(p,v) atomic_store((p),(v))
 #define avpriv_atomic_fetch_add(p,v) \

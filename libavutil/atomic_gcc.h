@@ -25,6 +25,10 @@
 
 #include "atomic.h"
 
+#ifndef AV_ATOMIC
+#define AV_ATOMIC(type) type volatile
+#endif
+
 #define avpriv_atomic_get(ptr) __atomic_load_n((ptr),__ATOMIC_SEQ_CST)
 #define avpriv_atomic_set(ptr,val) __atomic_store_n((ptr),(val),__ATOMIC_SEQ_CST)
 #define avpriv_atomic_ptr_set(ptr,val) __atomic_store_n((ptr),(val),__ATOMIC_SEQ_CST)

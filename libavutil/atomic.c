@@ -29,7 +29,7 @@
 
 static pthread_mutex_t atomic_lock = PTHREAD_MUTEX_INITIALIZER;
 
-int avpriv_atomic_int_get(volatile int *ptr)
+int avpriv_atomic_int_get(AV_ATOMIC(int) *ptr)
 {
     int res;
 
@@ -40,13 +40,13 @@ int avpriv_atomic_int_get(volatile int *ptr)
     return res;
 }
 
-void avpriv_atomic_int_set(volatile int *ptr, int val)
+void avpriv_atomic_int_set(AV_ATOMIC(int) *ptr, int val)
 {
     pthread_mutex_lock(&atomic_lock);
     *ptr = val;
     pthread_mutex_unlock(&atomic_lock);
 }
-int avpriv_atomic_int_fetch_add(volatile int *ptr, int inc)
+int avpriv_atomic_int_fetch_add(AV_ATOMIC(int) *ptr, int inc)
 {
     int res;
 
@@ -60,7 +60,7 @@ int avpriv_atomic_int_fetch_add(volatile int *ptr, int inc)
 
 
 
-int avpriv_atomic_int_exchange(volatile int *ptr, int val)
+int avpriv_atomic_int_exchange(AV_ATOMIC(int) *ptr, int val)
 {
     void *ret;
     pthread_mutex_lock(&atomic_lock);
@@ -69,7 +69,7 @@ int avpriv_atomic_int_exchange(volatile int *ptr, int val)
     pthread_mutex_unlock(&atomic_lock);
     return ret;
 }
-void *avpriv_atomic_ptr_cas(void * volatile *ptr, void *oldval, void *newval)
+void *avpriv_atomic_ptr_cas(AV_ATOMIC(void *)*ptr, void *oldval, void *newval)
 {
     void *ret;
     pthread_mutex_lock(&atomic_lock);
@@ -82,29 +82,29 @@ void *avpriv_atomic_ptr_cas(void * volatile *ptr, void *oldval, void *newval)
 
 #elif !HAVE_THREADS
 
-int avpriv_atomic_int_get(volatile int *ptr)
+int avpriv_atomic_int_get(AV_ATOMIC(int) *ptr)
 {
     return *ptr;
 }
 
-void avpriv_atomic_int_set(volatile int *ptr, int val)
+void avpriv_atomic_int_set(AV_ATOMIC(int) *ptr, int val)
 {
     *ptr = val;
 }
 
-int avpriv_atomic_int_fetch_add(volatile int *ptr, int inc)
+int avpriv_atomic_int_fetch_add(AV_ATOMIC(int) *ptr, int inc)
 {
     int ret = *ptr;
     *ptr += inc;
     return ret;
 }
-int avpriv_atomic_int_exchange(volatile int *ptr, int inc)
+int avpriv_atomic_int_exchange(AV_ATOMIC(int) *ptr, int inc)
 {
     int ret = *ptr;
     *ptr = inc;
     return ret;
 }
-void *avpriv_atomic_ptr_cas(void * volatile *ptr, void *oldval, void *newval)
+void *avpriv_atomic_ptr_cas(AV_ATOMIC(void *) *ptr, void *oldval, void *newval)
 {
     if (*ptr == oldval) {
         *ptr = newval;

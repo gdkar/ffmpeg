@@ -31,7 +31,7 @@
 #include "thread.h"
 #include "atomic.h"
 
-static pthread_mutex_t * volatile atomic_opencl_lock = NULL;
+static AV_ATOMIC(pthread_mutex_t *) atomic_opencl_lock = NULL;
 #define LOCK_OPENCL pthread_mutex_lock(atomic_opencl_lock)
 #define UNLOCK_OPENCL pthread_mutex_unlock(atomic_opencl_lock)
 #else
@@ -358,7 +358,7 @@ static inline int init_opencl_mtx(void)
             av_freep(tmp);
             return AVERROR(err);
         }
-        if (!avpriv_atomic_cas((void * volatile *)&atomic_opencl_lock, old, tmp)) {
+        if (!avpriv_atomic_cas((AV_ATOMIC(void *) *)&atomic_opencl_lock, old, tmp)) {
             pthread_mutex_destroy(tmp);
             av_freep(tmp);
         }

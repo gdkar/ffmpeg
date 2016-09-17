@@ -35,7 +35,9 @@
 #endif
 
 #else
-
+#ifndef AV_ATOMIC
+#define AV_ATOMIC(type) type volatile
+#endif
 /**
  * Load the current value stored in an atomic integer.
  *
@@ -43,7 +45,7 @@
  * @return the current value of the atomic integer
  * @note This acts as a memory barrier.
  */
-int avpriv_atomic_int_get(volatile int *ptr);
+int avpriv_atomic_int_get(AV_ATOMIC(int) *ptr);
 
 /**
  * Store a new value in an atomic integer.
@@ -52,7 +54,7 @@ int avpriv_atomic_int_get(volatile int *ptr);
  * @param val the value to store in the atomic integer
  * @note This acts as a memory barrier.
  */
-void avpriv_atomic_int_set(volatile int *ptr, int val);
+void avpriv_atomic_int_set(AV_ATOMIC(int) *ptr, int val);
 
 /**
  * Add a value to an atomic integer.
@@ -63,7 +65,7 @@ void avpriv_atomic_int_set(volatile int *ptr, int val);
  * @note This does NOT act as a memory barrier. This is primarily
  *       intended for reference counting.
  */
-int avpriv_atomic_int_fetch_add(volatile int *ptr, int inc);
+int avpriv_atomic_int_fetch_add(AV_ATOMIC(int) *ptr, int inc);
 /**
  * Add a value to an atomic integer.
  *
@@ -73,7 +75,7 @@ int avpriv_atomic_int_fetch_add(volatile int *ptr, int inc);
  * @note This does NOT act as a memory barrier. This is primarily
  *       intended for reference counting.
  */
-int avpriv_atomic_int_exchange(volatile int *ptr, int with);
+int avpriv_atomic_int_exchange(AV_ATOMIC(int) *ptr, int with);
 
 /*
  * Load the current value stored in an atomic integer.
@@ -82,7 +84,7 @@ int avpriv_atomic_int_exchange(volatile int *ptr, int with);
  * @return the current value of the atomic integer
  * @note This acts as a memory barrier.
  */
-void *avpriv_atomic_ptr_get(void * volatile  *ptr);
+void *avpriv_atomic_ptr_get(AV_ATOMIC(void * )*ptr);
 
 /**
  * Store a new value in an atomic integer.
@@ -91,7 +93,7 @@ void *avpriv_atomic_ptr_get(void * volatile  *ptr);
  * @param val the value to store in the atomic integer
  * @note This acts as a memory barrier.
  */
-void avpriv_atomic_ptr_set(void *volatile *ptr, void *val);
+void avpriv_atomic_ptr_set(AV_ATOMIC(void *) *ptr, void *val);
 
 /**
  * Add a value to an atomic integer.
@@ -102,7 +104,7 @@ void avpriv_atomic_ptr_set(void *volatile *ptr, void *val);
  * @note This does NOT act as a memory barrier. This is primarily
  *       intended for reference counting.
  */
-void *avpriv_atomic_ptr_exchange(void * volatile *ptr, void *with);
+void *avpriv_atomic_ptr_exchange(AV_ATOMIC(void *) *ptr, void *with);
 /**
  * Atomic pointer compare and swap.
  *
@@ -111,7 +113,7 @@ void *avpriv_atomic_ptr_exchange(void * volatile *ptr, void *with);
  * @param newval value to replace *ptr with
  * @return the value of *ptr before comparison
  */
-void *avpriv_atomic_ptr_cas(void * volatile *ptr, void *oldval, void *newval);
+void *avpriv_atomic_ptr_cas(AV_ATOMIC(void *) *ptr, void *oldval, void *newval);
 
 #endif /* HAVE_ATOMICS_NATIVE */
 

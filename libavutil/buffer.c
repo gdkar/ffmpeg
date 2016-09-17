@@ -132,13 +132,12 @@ void *av_buffer_get_opaque(const AVBufferRef *buf)
 
 int av_buffer_get_ref_count(const AVBufferRef *buf)
 {
-    return buf->buffer->refcount;
+    return avpriv_atomic_int_get(&buf->buffer->refcount);
 }
 
 int av_buffer_make_writable(AVBufferRef **pbuf)
 {
     AVBufferRef *newbuf, *buf = *pbuf;
-
     if (av_buffer_is_writable(buf))
         return 0;
 
@@ -147,7 +146,6 @@ int av_buffer_make_writable(AVBufferRef **pbuf)
         return AVERROR(ENOMEM);
 
     memcpy(newbuf->data, buf->data, buf->size);
-
     buffer_replace(pbuf, &newbuf);
 
     return 0;
@@ -170,7 +168,6 @@ int av_buffer_realloc(AVBufferRef **pbuf, int size)
             av_freep(&data);
             return AVERROR(ENOMEM);
         }
-
         buf->buffer->flags |= BUFFER_FLAG_REALLOCATABLE;
         *pbuf = buf;
 
@@ -271,7 +268,7 @@ void av_buffer_pool_uninit(AVBufferPool **ppool)
 static BufferPoolEntry *get_pool(AVBufferPool *pool)
 {
 
-    return (BufferPoolEntry*)avpriv_atomic_exchange((void *volatile *)&pool->pool,NULL);
+    return (BufferPoolEntry*)avpriv_atomic_exchange((AV_ATOMIC(void *)*)&pool->pool,NULL);
 }
 
 static void add_to_pool(BufferPoolEntry *buf)
@@ -283,10 +280,10 @@ static void add_to_pool(BufferPoolEntry *buf)
     pool = buf->pool;
     while (end->next)
         end = end->next;
-    cur = avpriv_atomic_ptr_get((void *volatile *)&pool->pool);    
+    cur = avpriv_atomic_ptr_get(AV_ATOMIC((void *) *)&pool->pool);
     do {
         end->next = cur;
-    }while (avpriv_atomic_ptr_cas((void * volatile *)&pool->pool, NULL, buf)) {
+    }while (avpriv_atomic_ptr_cas((AV_ATOMIC(void *) *)&pool->pool, NULL, buf)) {
         /* pool is not empty, retrieve it and append it to our list */
         cur = get_pool(pool);
         end->next = cur;

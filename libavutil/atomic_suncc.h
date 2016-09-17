@@ -24,28 +24,31 @@
 
 #include "atomic.h"
 
+#ifndef AV_ATOMIC
+#define AV_ATOMIC(type) type volatile
+#endif
 #define avpriv_atomic_int_get atomic_int_get_suncc
-static inline int atomic_int_get_suncc(volatile int *ptr)
+static inline int atomic_int_get_suncc(AV_ATOMIC(int) *ptr)
 {
     __machine_rw_barrier();
     return *ptr;
 }
 
 #define avpriv_atomic_int_set atomic_int_set_suncc
-static inline void atomic_int_set_suncc(volatile int *ptr, int val)
+static inline void atomic_int_set_suncc(AV_ATOMIC(int) *ptr, int val)
 {
     *ptr = val;
     __machine_rw_barrier();
 }
 
 #define avpriv_atomic_int_fetch_add atomic_int_fetch_add_suncc
-static inline int atomic_int_fetch_add_suncc(volatile int *ptr, int inc)
+static inline int atomic_int_fetch_add_suncc(AV_ATOMIC(int) *ptr, int inc)
 {
     return atomic_add_int_nv(ptr, inc) - inc;
 }
 
 #define avpriv_atomic_ptr_cas atomic_ptr_cas_suncc
-static inline void *atomic_ptr_cas_suncc(void * volatile *ptr,
+static inline void *atomic_ptr_cas_suncc(AV_ATOMIC(void *) *ptr,
                                          void *oldval, void *newval)
 {
     return atomic_cas_ptr(ptr, oldval, newval);
