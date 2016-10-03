@@ -537,7 +537,7 @@ int avfilter_register(AVFilter *filter)
     av_assert0((filter->flags & AVFILTER_FLAG_SUPPORT_TIMELINE) != AVFILTER_FLAG_SUPPORT_TIMELINE);
     filter->next = NULL;
     f = avpriv_atomic_exchange(&last_filter, &filter->next);
-    avpriv_atomic_set(f, filter); 
+    avpriv_atomic_set(f, filter);
     return 0;
 }
 

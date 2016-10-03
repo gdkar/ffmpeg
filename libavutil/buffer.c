@@ -85,9 +85,10 @@ AVBufferRef *av_buffer_allocz(int size)
 
 AVBufferRef *av_buffer_ref(AVBufferRef *buf)
 {
+    AVBufferRef *ret = NULL;
     if(!buf)
         return NULL;
-    AVBufferRef *ret = av_mallocz(sizeof(*ret));
+    ret = av_mallocz(sizeof(*ret));
     if (!ret)
         return NULL;
     *ret = *buf;

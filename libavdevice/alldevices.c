@@ -19,7 +19,6 @@
  */
 
 #include "config.h"
-#include "libavutil/thread.h"
 #include "avdevice.h"
 
 #define REGISTER_OUTDEV(X, x)                                           \
@@ -38,19 +37,14 @@
 
 #define REGISTER_INOUTDEV(X, x) REGISTER_OUTDEV(X, x); REGISTER_INDEV(X, x)
 
-static AVOnce avdevice_reg_once = AV_ONCE_INIT;
-static void avdevice_register_all_once(void);
 void avdevice_register_all(void)
 {
-    static int initialized = 0;
-    if(initialized)
-        return;
-    ff_thread_once(&avdevice_reg_once,&avdevice_register_all_once);
-    initialized = 1;
-}
+    static int initialized;
 
-static void avdevice_register_all_once(void)
-{
+    if (initialized)
+        return;
+    initialized = 1;
+
     /* devices */
     REGISTER_INOUTDEV(ALSA,             alsa);
     REGISTER_INDEV   (AVFOUNDATION,     avfoundation);
@@ -69,7 +63,6 @@ static void avdevice_register_all_once(void)
     REGISTER_INOUTDEV(OSS,              oss);
     REGISTER_INOUTDEV(PULSE,            pulse);
     REGISTER_INDEV   (QTKIT,            qtkit);
-    REGISTER_OUTDEV  (SDL,              sdl);
     REGISTER_OUTDEV  (SDL2,             sdl2);
     REGISTER_INOUTDEV(SNDIO,            sndio);
     REGISTER_INOUTDEV(V4L2,             v4l2);
