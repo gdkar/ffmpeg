@@ -562,73 +562,71 @@ static int decoder_decode_frame(Decoder *d, AVFrame *frame, AVSubtitle *sub) {
 
         if (d->queue->abort_request)
             return -1;
-
-        if (!d->packet_pending || d->queue->serial != d->pkt_serial) {
-            AVPacket pkt;
-            do {
-                if (d->queue->nb_packets == 0)
-                    SDL_CondSignal(d->empty_queue_cond);
-                if (packet_queue_get(d->queue, &pkt, 1, &d->pkt_serial) < 0)
-                    return -1;
-                if (pkt.data == flush_pkt.data) {
-                    avcodec_flush_buffers(d->avctx);
-                    d->finished = 0;
-                    d->next_pts = d->start_pts;
-                    d->next_pts_tb = d->start_pts_tb;
-                }
-            } while (pkt.data == flush_pkt.data || d->queue->serial != d->pkt_serial);
-            av_packet_unref(&d->pkt);
-            d->pkt_temp = d->pkt = pkt;
-            d->packet_pending = 1;
-        }
-
-        switch (d->avctx->codec_type) {
-            case AVMEDIA_TYPE_VIDEO:
-                ret = avcodec_decode_video2(d->avctx, frame, &got_frame, &d->pkt_temp);
-                if (got_frame) {
-                    if (decoder_reorder_pts == -1) {
-                        frame->pts = av_frame_get_best_effort_timestamp(frame);
-                    } else if (!decoder_reorder_pts) {
-                        frame->pts = frame->pkt_dts;
+        ret = avcodec_receive_frame(d->avctx, frame);
+        if(!ret)
+            got_frame = 1;
+        else if(ret == AVERROR(EAGAIN)) {
+            if (!d->packet_pending || d->queue->serial != d->pkt_serial) {
+                AVPacket pkt;
+                do {
+                    if (d->queue->nb_packets == 0)
+                        SDL_CondSignal(d->empty_queue_cond);
+                    if (packet_queue_get(d->queue, &pkt, 1, &d->pkt_serial) < 0)
+                        return -1;
+                    if (pkt.data == flush_pkt.data) {
+                        avcodec_flush_buffers(d->avctx);
+                        d->finished = 0;
+                        d->next_pts = d->start_pts;
+                        d->next_pts_tb = d->start_pts_tb;
                     }
+                } while (pkt.data == flush_pkt.data || d->queue->serial != d->pkt_serial);
+                av_packet_unref(&d->pkt);
+                d->pkt_temp = d->pkt = pkt;
+                d->packet_pending = 1;
+            }
+            if(d->packet_pending) {
+                if(!d->pkt_temp.data) {
+                    ret = avcodec_send_packet(d->avctx, NULL);
+                }else{
+                    ret = avcodec_send_packet(d->avctx, &d->pkt_temp);
                 }
-                break;
-            case AVMEDIA_TYPE_AUDIO:
-                ret = avcodec_decode_audio4(d->avctx, frame, &got_frame, &d->pkt_temp);
-                if (got_frame) {
-                    AVRational tb = (AVRational){1, frame->sample_rate};
-                    if (frame->pts != AV_NOPTS_VALUE)
-                        frame->pts = av_rescale_q(frame->pts, av_codec_get_pkt_timebase(d->avctx), tb);
-                    else if (d->next_pts != AV_NOPTS_VALUE)
-                        frame->pts = av_rescale_q(d->next_pts, d->next_pts_tb, tb);
-                    if (frame->pts != AV_NOPTS_VALUE) {
-                        d->next_pts = frame->pts + frame->nb_samples;
-                        d->next_pts_tb = tb;
-                    }
+                if(!ret) {
+                    d->packet_pending = 0;
+                    got_frame = ((ret = avcodec_receive_frame(d->avctx, frame))==0);
+                } else {
+                    d->packet_pending = 0;
                 }
-                break;
-            case AVMEDIA_TYPE_SUBTITLE:
-                ret = avcodec_decode_subtitle2(d->avctx, sub, &got_frame, &d->pkt_temp);
-                break;
-        }
-
-        if (ret < 0) {
-            d->packet_pending = 0;
-        } else {
-            d->pkt_temp.dts =
-            d->pkt_temp.pts = AV_NOPTS_VALUE;
-            if (d->pkt_temp.data) {
-                if (d->avctx->codec_type != AVMEDIA_TYPE_AUDIO)
-                    ret = d->pkt_temp.size;
-                d->pkt_temp.data += ret;
-                d->pkt_temp.size -= ret;
-                if (d->pkt_temp.size <= 0)
-                    d->packet_pending = 0;
-            } else {
-                if (!got_frame) {
-                    d->packet_pending = 0;
+                if(!got_frame && !d->pkt_temp.data) {
                     d->finished = d->pkt_serial;
                 }
+            }
+        }
+        if(got_frame) {
+            switch (d->avctx->codec_type) {
+                case AVMEDIA_TYPE_VIDEO:{
+                        if (decoder_reorder_pts == -1) {
+                            frame->pts = av_frame_get_best_effort_timestamp(frame);
+                        } else if (!decoder_reorder_pts) {
+                            frame->pts = frame->pkt_dts;
+                        }
+                    }
+                    break;
+                case AVMEDIA_TYPE_AUDIO: {
+                    AVRational tb = (AVRational){1, frame->sample_rate};
+                        if (frame->pts != AV_NOPTS_VALUE)
+                            frame->pts = av_rescale_q(frame->pts, av_codec_get_pkt_timebase(d->avctx), tb);
+                        else if (d->next_pts != AV_NOPTS_VALUE)
+                            frame->pts = av_rescale_q(d->next_pts, d->next_pts_tb, tb);
+                        if (frame->pts != AV_NOPTS_VALUE) {
+                            d->next_pts = frame->pts + frame->nb_samples;
+                            d->next_pts_tb = tb;
+                        }
+                    }
+                    break;
+                case AVMEDIA_TYPE_SUBTITLE:
+                    break;
+                default:
+                    break;
             }
         }
     } while (!got_frame && !d->finished);
@@ -1068,7 +1066,7 @@ static void video_audio_display(VideoState *s)
         nb_display_channels= FFMIN(nb_display_channels, 2);
         if (rdft_bits != s->rdft_bits) {
             av_rdft_end(s->rdft);
-            av_free(s->rdft_data);
+            av_freep(&s->rdft_data);
             s->rdft = av_rdft_init(rdft_bits, DFT_R2C);
             s->rdft_bits = rdft_bits;
             s->rdft_data = av_malloc_array(nb_freq, 4 *sizeof(*s->rdft_data));
@@ -1085,23 +1083,21 @@ static void video_audio_display(VideoState *s)
                 data[ch] = s->rdft_data + 2 * nb_freq * ch;
                 i = i_start + ch;
                 for (x = 0; x < 2 * nb_freq; x++) {
-                    double w = (x-nb_freq) * (1.0 / nb_freq);
-                    data[ch][x] = s->sample_array[i] * (1.0 - w * w);
+                    float w = (x-nb_freq) * (1.f / nb_freq);
+                    data[ch][x] = s->sample_array[i] * (1.f - w * w);
                     i += channels;
                     if (i >= SAMPLE_ARRAY_SIZE)
                         i -= SAMPLE_ARRAY_SIZE;
                 }
                 av_rdft_calc(s->rdft, data[ch]);
             }
-            /* Least efficient way to do this, we should of course
-             * directly access it but it is more than fast enough. */
             if (!SDL_LockTexture(s->vis_texture, &rect, (void **)&pixels, &pitch)) {
                 pitch >>= 2;
                 pixels += pitch * s->height;
+                float w = 1 / sqrtf(nb_freq);
                 for (y = 0; y < s->height; y++) {
-                    double w = 1 / sqrt(nb_freq);
-                    int a = sqrt(w * sqrt(data[0][2 * y + 0] * data[0][2 * y + 0] + data[0][2 * y + 1] * data[0][2 * y + 1]));
-                    int b = (nb_display_channels == 2 ) ? sqrt(w * hypot(data[1][2 * y + 0], data[1][2 * y + 1]))
+                    int a = sqrtf(w * hypotf(data[0][2 * y + 0], data[0][2 * y + 1]));
+                    int b = (nb_display_channels == 2 ) ? sqrtf(w * hypot(data[1][2 * y + 0], data[1][2 * y + 1]))
                                                         : a;
                     a = FFMIN(a, 255);
                     b = FFMIN(b, 255);
