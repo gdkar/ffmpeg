@@ -389,9 +389,7 @@ int64_t get_valid_channel_layout(int64_t channel_layout, int channels)
     else
         return 0;
 }
-
 static void free_picture(Frame *vp);
-
 static int packet_queue_put_private(PacketQueue *q, AVPacket *pkt)
 {
     MyAVPacketList *pkt1;
@@ -399,11 +397,10 @@ static int packet_queue_put_private(PacketQueue *q, AVPacket *pkt)
     if (q->abort_request)
        return -1;
 
-    pkt1 = av_malloc(sizeof(MyAVPacketList));
+    pkt1 = av_mallocz(sizeof(MyAVPacketList));
     if (!pkt1)
         return -1;
     pkt1->pkt = *pkt;
-    pkt1->next = NULL;
     if (pkt == &flush_pkt)
         q->serial++;
     pkt1->serial = q->serial;
@@ -3738,8 +3735,6 @@ int main(int argc, char **argv)
     }
 
     event_loop(is);
-
     /* never returns */
-
     return 0;
 }
